@@ -1,0 +1,73 @@
+# https://github.com/microsoft/onnxruntime/blob/668c70ee11b6b20c56997a9bc68e93317674e803/dockerfiles/Dockerfile.rocm
+# --------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+# --------------------------------------------------------------
+# Dockerfile to run ONNXRuntime with ROCm integration
+#--------------------------------------------------------------------------
+
+FROM rocm/pytorch:rocm5.4_ubuntu20.04_py3.7_pytorch_1.12.1 AS builder
+
+ARG ONNXRUNTIME_REPO=https://github.com/Microsoft/onnxruntime
+ARG ONNXRUNTIME_BRANCH=main
+ARG ONNXRUNTIME_COMMIT=6a5f469d44aca607bd08cc2aca117c33bab31da8
+
+WORKDIR /code
+
+ENV PATH /opt/miniconda/bin:/code/cmake-3.27.3-linux-x86_64/bin:${PATH}
+
+# Prepare onnxruntime repository & build onnxruntime
+RUN git clone --single-branch --branch ${ONNXRUNTIME_BRANCH} --recursive ${ONNXRUNTIME_REPO} onnxruntime &&\
+    /bin/sh onnxruntime/dockerfiles/scripts/install_common_deps.sh &&\
+    cd onnxruntime &&\
+    git checkout ${ONNXRUNTIME_COMMIT} && \
+    /bin/sh ./build.sh --allow_running_as_root --config Release --build_wheel --update --build --parallel --cmake_extra_defines\
+            ONNXRUNTIME_VERSION=$(cat ./VERSION_NUMBER) --use_rocm --rocm_home=/opt/rocm &&\
+    pip install /code/onnxruntime/build/Linux/Release/dist/*.whl &&\
+    cd ..
+
+# DOCKER_BUILDKIT=1 docker build --build-arg BUILDKIT_INLINE_CACHE=1 -f Dockerfile.rocm --target builder -t onnxruntime-rocm-wheels .
+
+# ------------------------------------------------------------------------
+
+# https://github.com/RadeonOpenCompute/ROCm-docker/blob/4e7caeb017aad706cd49ac433938f1226874ff9d/rocm-terminal/Dockerfile
+FROM ubuntu:20.04
+MAINTAINER James McClain <jmcclain@daystrom-data-concepts.com>
+
+# Initialize the image
+# Modify to pre-install dev tools and ROCm packages
+ARG ROCM_VERSION=5.3
+ARG AMDGPU_VERSION=5.3
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN --mount=type=cache,target=/var/cache/apt \
+    apt update && \
+    apt install -y software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt update
+
+RUN --mount=type=cache,target=/var/cache/apt \
+    apt install -y --no-install-recommends ca-certificates curl gnupg && \
+    curl -sL http://repo.radeon.com/rocm/rocm.gpg.key | apt-key add - && \
+    sh -c 'echo deb [arch=amd64] http://repo.radeon.com/rocm/apt/$ROCM_VERSION/ focal main > /etc/apt/sources.list.d/rocm.list' && \
+    sh -c 'echo deb [arch=amd64] https://repo.radeon.com/amdgpu/$AMDGPU_VERSION/ubuntu focal main > /etc/apt/sources.list.d/amdgpu.list' && \
+    apt update && \
+    apt install -y --no-install-recommends libelf1 libnuma-dev build-essential git vim-nox cmake-curses-gui kmod file python3.7-full rocm-dev && \
+    apt clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN --mount=type=cache,target=/root/.cache/pip update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1 && \
+    python3.7 -m ensurepip && python3.7 -m pip install --upgrade pip
+
+ENV PATH "${PATH}:/opt/rocm/bin"
+
+COPY --from=builder /code/onnxruntime/build/Linux/Release/dist/ /code/onnxruntime/build/Linux/Release/dist/
+
+RUN --mount=type=cache,target=/root/.cache/pip pip3.7 install /code/onnxruntime/build/Linux/Release/dist/*.whl
+
+WORKDIR /workdir
+
+CMD ["bash", "-l"]
+
+# DOCKER_BUILDKIT=1 docker build --build-arg BUILDKIT_INLINE_CACHE=1 -f Dockerfile.rocm -t onnxruntime-rocm-thin .
