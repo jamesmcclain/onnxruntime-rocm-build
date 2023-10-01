@@ -36,8 +36,8 @@ MAINTAINER James McClain <jmcclain@daystrom-data-concepts.com>
 
 # Initialize the image
 # Modify to pre-install dev tools and ROCm packages
-ARG ROCM_VERSION=5.3
-ARG AMDGPU_VERSION=5.3
+ARG ROCM_VERSION=5.4
+ARG AMDGPU_VERSION=5.4
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -53,7 +53,7 @@ RUN --mount=type=cache,target=/var/cache/apt \
     sh -c 'echo deb [arch=amd64] http://repo.radeon.com/rocm/apt/$ROCM_VERSION/ focal main > /etc/apt/sources.list.d/rocm.list' && \
     sh -c 'echo deb [arch=amd64] https://repo.radeon.com/amdgpu/$AMDGPU_VERSION/ubuntu focal main > /etc/apt/sources.list.d/amdgpu.list' && \
     apt update && \
-    apt install -y --no-install-recommends libelf1 libnuma-dev build-essential git vim-nox cmake-curses-gui kmod file python3.7-full rocm-dev && \
+    apt install -y --no-install-recommends libelf1 libnuma-dev build-essential git vim-nox cmake-curses-gui kmod file python3.7-full rocm-dev rocblas-dev miopen-hip-dev && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
 
