@@ -60,3 +60,14 @@ RUN git clone --single-branch --branch ${ONNXRUNTIME_BRANCH} --recursive ${ONNXR
     pip install /code/onnxruntime/build/Linux/Release/dist/*.whl
 
 # DOCKER_BUILDKIT=1 docker build --build-arg BUILDKIT_INLINE_CACHE=1 -f Dockerfile --target stage2 -t onnxruntime-rocm-stage2 .
+
+# ------------------------------------------------------------------------
+
+FROM stage1
+
+COPY --from=stage2 /code/onnxruntime/build/Linux/Release/dist/ /code/onnxruntime/build/Linux/Release/dist/
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install /code/onnxruntime/build/Linux/Release/dist/*.whl
+
+# DOCKER_BUILDKIT=1 docker build --build-arg BUILDKIT_INLINE_CACHE=1 -f Dockerfile -t jamesmcclain/onnxruntime-rocm:rocm5.7-ubuntu22.04 .
