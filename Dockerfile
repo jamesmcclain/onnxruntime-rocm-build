@@ -24,8 +24,39 @@ RUN --mount=type=cache,target=/var/cache/apt \
     DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends libelf1 libnuma-dev build-essential git vim-nox cmake-curses-gui kmod file python3 python3-pip rocm-dev rocblas-dev miopen-hip-dev zsh && \
     apt autoremove -y && apt autoclean -y && apt clean -y
 
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install coloredlogs==15.0.1 flatbuffers==23.5.26 humanfriendly==10.0 mpmath==1.3.0 numpy==1.26.0 packaging==23.2 protobuf==4.24.3 sympy==1.12
+
 WORKDIR /workdir
 
 CMD ["zsh", "-l"]
 
 # DOCKER_BUILDKIT=1 docker build --build-arg BUILDKIT_INLINE_CACHE=1 -f Dockerfile --target stage1 -t onnxruntime-rocm-stage1 .
+
+# ------------------------------------------------------------------------
+
+FROM stage1 AS stage2
+
+ARG ONNXRUNTIME_REPO=https://github.com/Microsoft/onnxruntime
+ARG ONNXRUNTIME_BRANCH=main
+ARG ONNXRUNTIME_COMMIT=6a5f469d44aca607bd08cc2aca117c33bab31da8
+
+ENV PATH /code/cmake-3.27.3-linux-x86_64/bin:${PATH}
+
+WORKDIR /code
+
+RUN --mount=type=cache,target=/var/cache/apt \
+    apt install -y rocm-libs libpython3-dev
+
+RUN wget --quiet https://github.com/Kitware/CMake/releases/download/v3.27.3/cmake-3.27.3-linux-x86_64.tar.gz && \
+    tar zxf cmake-3.27.3-linux-x86_64.tar.gz && \
+    rm -rf cmake-3.27.3-linux-x86_64.tar.gz
+
+RUN git clone --single-branch --branch ${ONNXRUNTIME_BRANCH} --recursive ${ONNXRUNTIME_REPO} onnxruntime &&\
+    /bin/sh onnxruntime/dockerfiles/scripts/install_common_deps.sh &&\
+    cd onnxruntime &&\
+    git checkout ${ONNXRUNTIME_COMMIT} && \
+    /bin/sh ./build.sh --allow_running_as_root --config Release --build_wheel --update --build --parallel --cmake_extra_defines ONNXRUNTIME_VERSION=$(cat ./VERSION_NUMBER) --use_rocm --rocm_home=/opt/rocm &&\
+    pip install /code/onnxruntime/build/Linux/Release/dist/*.whl
+
+# DOCKER_BUILDKIT=1 docker build --build-arg BUILDKIT_INLINE_CACHE=1 -f Dockerfile --target stage2 -t onnxruntime-rocm-stage2 .
