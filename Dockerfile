@@ -56,8 +56,11 @@ RUN git clone --single-branch --branch ${ONNXRUNTIME_BRANCH} --recursive ${ONNXR
     /bin/sh onnxruntime/dockerfiles/scripts/install_common_deps.sh &&\
     cd onnxruntime &&\
     git checkout ${ONNXRUNTIME_COMMIT} && \
-    /bin/sh ./build.sh --allow_running_as_root --config Release --build_wheel --update --build --parallel --cmake_extra_defines ONNXRUNTIME_VERSION=$(cat ./VERSION_NUMBER) --use_rocm --rocm_home=/opt/rocm &&\
-    pip install /code/onnxruntime/build/Linux/Release/dist/*.whl
+    /bin/sh ./build.sh --allow_running_as_root --config Release --build_wheel --update --build --parallel \
+    	    --cmake_extra_defines onnxruntime_USE_COMPOSABLE_KERNEL=OFF ONNXRUNTIME_VERSION=$(cat ./VERSION_NUMBER) \
+	    --use_rocm --rocm_version ${ROCM_VERSION} --rocm_home=/opt/rocm \
+	    --skip_submodule_sync --skip_tests
+RUN pip install /code/onnxruntime/build/Linux/Release/dist/*.whl
 
 # DOCKER_BUILDKIT=1 docker build --build-arg BUILDKIT_INLINE_CACHE=1 -f Dockerfile --target stage2 -t onnxruntime-rocm-stage2 .
 
