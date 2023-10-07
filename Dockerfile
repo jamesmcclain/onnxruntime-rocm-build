@@ -57,7 +57,7 @@ RUN git clone --single-branch --branch ${ONNXRUNTIME_BRANCH} --recursive ${ONNXR
     cd onnxruntime &&\
     git checkout ${ONNXRUNTIME_COMMIT} && \
     /bin/sh ./build.sh --allow_running_as_root --config Release --build_wheel --update --build --parallel \
-    	    --cmake_extra_defines onnxruntime_USE_COMPOSABLE_KERNEL=OFF ONNXRUNTIME_VERSION=$(cat ./VERSION_NUMBER) \
+    	    --cmake_extra_defines ONNXRUNTIME_VERSION=$(cat ./VERSION_NUMBER) \
 	    --use_rocm --rocm_version ${ROCM_VERSION} --rocm_home=/opt/rocm \
 	    --skip_submodule_sync --skip_tests
 RUN pip install /code/onnxruntime/build/Linux/Release/dist/*.whl
