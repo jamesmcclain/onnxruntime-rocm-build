@@ -3,4 +3,4 @@ FROM onnxruntime-rocm-stage1-rocm5.7
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm5.6
 
-# DOCKER_BUILDKIT=1 docker build --build-arg BUILDKIT_INLINE_CACHE=1 -f Dockerfile.pytorch -t jamesmcclain/pytorch-rocm:rocm5.7-ubuntu22.04 .
+# DOCKER_BUILDKIT=1 docker build --build-arg BUILDKIT_INLINE_CACHE=1 -f Dockerfile.pytorch-rocm5.7 -t jamesmcclain/pytorch-rocm:rocm5.7-ubuntu22.04 .
